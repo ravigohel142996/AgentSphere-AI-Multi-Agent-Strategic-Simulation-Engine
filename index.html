@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentSphere — Strategic Simulation Engine</title>
+
+  <!-- Chart.js bundled locally -->
+  <script src="chart.umd.js"></script>
+
+  <style>
+    /* ─── Design Tokens ──────────────────────────────────────────────────── */
+    :root {
+      --color-bg:           #f0f2f5;
+      --color-surface:      #ffffff;
+      --color-surface-alt:  #f7f8fa;
+      --color-border:       #e3e6ea;
+      --color-primary:      #1a3a5c;
+      --color-primary-mid:  #245082;
+      --color-accent:       #2e7d9e;
+      --color-accent-light: #e8f4fa;
+      --color-success:      #1a7f5a;
+      --color-success-bg:   #e8f5f0;
+      --color-warning:      #b45309;
+      --color-warning-bg:   #fef3e2;
+      --color-danger:       #b91c1c;
+      --color-danger-bg:    #fde8e8;
+      --color-text-primary: #0f1923;
+      --color-text-secondary:#4a5568;
+      --color-text-muted:   #8a96a3;
+      --color-kpi-up:       #1a7f5a;
+      --color-kpi-down:     #b91c1c;
+
+      --shadow-sm:  0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:  0 4px 12px rgba(0,0,0,.08), 0 1px 3px rgba(0,0,0,.05);
+      --shadow-lg:  0 8px 24px rgba(0,0,0,.10), 0 2px 6px rgba(0,0,0,.06);
+      --shadow-hover: 0 10px 28px rgba(0,0,0,.13), 0 2px 8px rgba(0,0,0,.07);
+
+      --radius-sm:  6px;
+      --radius-md:  10px;
+      --radius-lg:  14px;
+
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                     "Helvetica Neue", Arial, sans-serif;
+      --font-size-xs:   11px;
+      --font-size-sm:   13px;
+      --font-size-base: 14px;
+      --font-size-md:   15px;
+      --font-size-lg:   18px;
+      --font-size-xl:   22px;
+      --font-size-2xl:  28px;
+      --font-size-3xl:  36px;
+
+      --transition-fast:   150ms ease;
+      --transition-base:   220ms ease;
+      --transition-slow:   350ms ease;
+
+      --sidebar-width: 240px;
+      --header-height: 64px;
+    }
+
+    /* ─── Reset & Base ───────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { font-size: var(--font-size-base); scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-family);
+      background: var(--color-bg);
+      color: var(--color-text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+
+    /* ─── Layout Shell ───────────────────────────────────────────────────── */
+    .shell {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+      grid-template-rows: var(--header-height) 1fr;
+      min-height: 100vh;
+    }
+
+    /* ─── Sidebar ────────────────────────────────────────────────────────── */
+    .sidebar {
+      grid-row: 1 / 3;
+      background: var(--color-primary);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-5) var(--space-6);
+      height: var(--header-height);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      flex-shrink: 0;
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: rgba(255,255,255,.12);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      color: #ffffff;
+      font-size: var(--font-size-md);
+      font-weight: 700;
+      letter-spacing: -.3px;
+      line-height: 1.2;
+    }
+
+    .brand-sub {
+      color: rgba(255,255,255,.5);
+      font-size: var(--font-size-xs);
+      font-weight: 400;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-nav {
+      padding: var(--space-4) 0;
+      flex: 1;
+    }
+
+    .nav-section-label {
+      padding: var(--space-4) var(--space-6) var(--space-2);
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.35);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-6);
+      color: rgba(255,255,255,.65);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: background var(--transition-fast),
+                  color var(--transition-fast),
+                  border-color var(--transition-fast);
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.9);
+    }
+
+    .nav-item.active {
+      background: rgba(255,255,255,.10);
+      color: #ffffff;
+      border-left-color: rgba(255,255,255,.7);
+    }
+
+    .nav-item-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+    .sidebar-footer {
+      padding: var(--space-4) var(--space-6);
+      border-top: 1px solid rgba(255,255,255,.08);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .avatar-info { min-width: 0; }
+
+    .avatar-name {
+      color: rgba(255,255,255,.9);
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .avatar-role {
+      color: rgba(255,255,255,.4);
+      font-size: var(--font-size-xs);
+    }
+
+    /* ─── Header ─────────────────────────────────────────────────────────── */
+    .header {
+      height: var(--header-height);
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-8);
+      box-shadow: var(--shadow-sm);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: var(--space-4); }
+
+    .page-title {
+      font-size: var(--font-size-lg);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -.3px;
+    }
+
+    .sim-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      background: var(--color-success-bg);
+      color: var(--color-success);
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      letter-spacing: .4px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(26,127,90,.2);
+    }
+
+    .sim-badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-success);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: .5; transform: scale(.8); }
+    }
+
+    .header-right { display: flex; align-items: center; gap: var(--space-4); }
+
+    .header-meta {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+    }
+
+    .header-meta strong { color: var(--color-text-secondary); font-weight: 600; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-4);
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background var(--transition-fast),
+                  box-shadow var(--transition-fast),
+                  transform var(--transition-fast);
+      text-decoration: none;
+    }
+
+    .btn:active { transform: scale(.98); }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: var(--color-primary);
+    }
+    .btn-primary:hover { background: var(--color-primary-mid); box-shadow: var(--shadow-md); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--color-text-secondary);
+      border-color: var(--color-border);
+    }
+    .btn-ghost:hover { background: var(--color-surface-alt); }
+
+    /* ─── Main Content ───────────────────────────────────────────────────── */
+    .main {
+      padding: var(--space-8);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-8);
+      max-width: 1440px;
+    }
+
+    /* ─── Section Header ─────────────────────────────────────────────────── */
+    .section-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--space-4);
+    }
+
+    .section-title {
+      font-size: var(--font-size-lg);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -.3px;
+    }
+
+    .section-subtitle {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-muted);
+      margin-top: var(--space-1);
+    }
+
+    .section-action {
+      font-size: var(--font-size-sm);
+      color: var(--color-accent);
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: opacity var(--transition-fast);
+    }
+    .section-action:hover { opacity: .75; }
+
+    /* ─── KPI Grid ───────────────────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-6);
+    }
+
+    .kpi-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-6);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      transition: box-shadow var(--transition-base),
+                  transform var(--transition-base),
+                  border-color var(--transition-base);
+      cursor: default;
+    }
+
+    .kpi-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+      border-color: rgba(46,125,158,.3);
+    }
+
+    .kpi-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    .kpi-label {
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+
+    .kpi-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      flex-shrink: 0;
+    }
+
+    .kpi-icon-blue  { background: #e8f0f8; }
+    .kpi-icon-teal  { background: #e8f4fa; }
+    .kpi-icon-green { background: var(--color-success-bg); }
+    .kpi-icon-amber { background: var(--color-warning-bg); }
+
+    .kpi-value {
+      font-size: var(--font-size-3xl);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      color: var(--color-text-primary);
+      line-height: 1;
+    }
+
+    .kpi-value sup {
+      font-size: var(--font-size-xl);
+      font-weight: 700;
+      letter-spacing: 0;
+      vertical-align: super;
+    }
+
+    .kpi-footer {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-top: auto;
+    }
+
+    .kpi-delta {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+    }
+
+    .kpi-delta.up   { color: var(--color-kpi-up);   background: var(--color-success-bg); }
+    .kpi-delta.down { color: var(--color-kpi-down);  background: var(--color-danger-bg); }
+
+    .kpi-period {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+    }
+
+    /* ─── Charts Row ─────────────────────────────────────────────────────── */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: var(--space-6);
+    }
+
+    /* ─── Card ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      transition: box-shadow var(--transition-base);
+    }
+
+    .card:hover { box-shadow: var(--shadow-md); }
+
+    .card-header {
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid var(--color-border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-4);
+    }
+
+    .card-title {
+      font-size: var(--font-size-md);
+      font-weight: 700;
+      color: var(--color-text-primary);
+      letter-spacing: -.2px;
+    }
+
+    .card-subtitle {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      margin-top: 2px;
+    }
+
+    .card-body { padding: var(--space-6); }
+
+    .chart-wrap { position: relative; height: 260px; }
+
+    /* ─── Legend ─────────────────────────────────────────────────────────── */
+    .chart-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-6) var(--space-5);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--font-size-xs);
+      color: var(--color-text-secondary);
+      font-weight: 500;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ─── Agent Table ────────────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      padding: var(--space-3) var(--space-6);
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      text-align: left;
+      background: var(--color-surface-alt);
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--color-border);
+      transition: background var(--transition-fast);
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody tr:hover { background: var(--color-surface-alt); }
+
+    tbody td {
+      padding: var(--space-4) var(--space-6);
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      vertical-align: middle;
+    }
+
+    .agent-name-cell {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .agent-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: #fff;
+    }
+
+    .agent-full-name {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--color-text-primary);
+    }
+
+    .agent-type {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      letter-spacing: .2px;
+    }
+
+    .badge-active   { background: var(--color-success-bg); color: var(--color-success); }
+    .badge-waiting  { background: var(--color-warning-bg); color: var(--color-warning); }
+    .badge-idle     { background: #f0f0f0; color: #666; }
+
+    .progress-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 6px;
+      background: var(--color-border);
+      border-radius: 3px;
+      overflow: hidden;
+      min-width: 80px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: var(--color-accent);
+      transition: width var(--transition-slow);
+    }
+
+    .progress-value {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+    }
+
+    .td-numeric {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--color-text-primary);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    /* ─── Bottom Row ─────────────────────────────────────────────────────── */
+    .bottom-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-6);
+    }
+
+    /* ─── Event Feed ─────────────────────────────────────────────────────── */
+    .event-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .event-item {
+      display: flex;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-6);
+      border-bottom: 1px solid var(--color-border);
+      transition: background var(--transition-fast);
+      cursor: default;
+    }
+
+    .event-item:last-child { border-bottom: none; }
+    .event-item:hover { background: var(--color-surface-alt); }
+
+    .event-dot-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      flex-shrink: 0;
+      padding-top: 5px;
+    }
+
+    .event-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .event-line {
+      width: 1px;
+      flex: 1;
+      background: var(--color-border);
+      min-height: 20px;
+    }
+
+    .event-item:last-child .event-line { display: none; }
+
+    .event-dot-negotiation { background: var(--color-accent); }
+    .event-dot-coalition    { background: var(--color-success); }
+    .event-dot-conflict     { background: var(--color-danger); }
+    .event-dot-resource     { background: var(--color-warning); }
+    .event-dot-milestone    { background: var(--color-primary); }
+
+    .event-content { min-width: 0; flex: 1; }
+
+    .event-title {
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--color-text-primary);
+      margin-bottom: 2px;
+    }
+
+    .event-desc {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      line-height: 1.5;
+    }
+
+    .event-time {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      padding-top: 2px;
+    }
+
+    /* ─── Radar / Heatmap ────────────────────────────────────────────────── */
+    .radar-wrap { position: relative; height: 270px; }
+
+    /* ─── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 1200px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+      .bottom-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 900px) {
+      :root { --sidebar-width: 0px; }
+      .shell { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .header { padding: 0 var(--space-5); }
+      .main { padding: var(--space-5); }
+    }
+
+    @media (max-width: 600px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+      .header-right .btn-ghost { display: none; }
+      thead th:nth-child(n+5) { display: none; }
+      tbody td:nth-child(n+5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+  <aside class="sidebar" role="navigation" aria-label="Primary navigation">
+    <div class="sidebar-brand">
+      <div class="brand-icon" aria-hidden="true">🔮</div>
+      <div>
+        <div class="brand-name">AgentSphere</div>
+        <div class="brand-sub">Simulation Engine</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+      <a class="nav-item active" href="#" aria-current="page">
+        <span class="nav-item-icon" aria-hidden="true">▦</span> Dashboard
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">◈</span> Simulation
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">⬡</span> Scenario Builder
+      </a>
+
+      <div class="nav-section-label">Agents</div>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">⊕</span> Agent Roster
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">⇄</span> Interactions
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">◎</span> Coalitions
+      </a>
+
+      <div class="nav-section-label">Analytics</div>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">▲</span> Performance
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">≋</span> Resource Flows
+      </a>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">⊞</span> Reports
+      </a>
+
+      <div class="nav-section-label">System</div>
+      <a class="nav-item" href="#">
+        <span class="nav-item-icon" aria-hidden="true">⚙</span> Configuration
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar" aria-hidden="true">EA</div>
+      <div class="avatar-info">
+        <div class="avatar-name">Executive Analyst</div>
+        <div class="avatar-role">Strategy · Admin</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Header ───────────────────────────────────────────────────────── -->
+  <header class="header" role="banner">
+    <div class="header-left">
+      <h1 class="page-title">Command Dashboard</h1>
+      <div class="sim-badge" aria-label="Simulation active">
+        <span class="sim-badge-dot" aria-hidden="true"></span>
+        LIVE · Round 47
+      </div>
+    </div>
+    <div class="header-right">
+      <span class="header-meta">Cycle <strong>2026-Q1</strong></span>
+      <button class="btn btn-ghost" type="button">Export</button>
+      <button class="btn btn-primary" type="button">▶ Run Scenario</button>
+    </div>
+  </header>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────── -->
+  <main class="main" role="main" id="main-content">
+
+    <!-- KPI Row -->
+    <section aria-labelledby="kpi-section-label">
+      <div class="section-header" style="margin-bottom: var(--space-5);">
+        <div>
+          <h2 class="section-title" id="kpi-section-label">Key Performance Indicators</h2>
+          <p class="section-subtitle">Aggregate metrics across all active agents — updated each simulation cycle</p>
+        </div>
+        <a class="section-action" href="#">View all metrics</a>
+      </div>
+
+      <div class="kpi-grid" role="list">
+
+        <article class="kpi-card" role="listitem">
+          <div class="kpi-card-top">
+            <span class="kpi-label">Total Utility Score</span>
+            <div class="kpi-icon kpi-icon-blue" aria-hidden="true">📊</div>
+          </div>
+          <div class="kpi-value">84<sup>.</sup>7K</div>
+          <div class="kpi-footer">
+            <span class="kpi-delta up" aria-label="Up 12.4 percent">▲ 12.4%</span>
+            <span class="kpi-period">vs prior round</span>
+          </div>
+        </article>
+
+        <article class="kpi-card" role="listitem">
+          <div class="kpi-card-top">
+            <span class="kpi-label">Active Agents</span>
+            <div class="kpi-icon kpi-icon-teal" aria-hidden="true">🤖</div>
+          </div>
+          <div class="kpi-value">12</div>
+          <div class="kpi-footer">
+            <span class="kpi-delta up" aria-label="Up 2">▲ +2</span>
+            <span class="kpi-period">this cycle</span>
+          </div>
+        </article>
+
+        <article class="kpi-card" role="listitem">
+          <div class="kpi-card-top">
+            <span class="kpi-label">Negotiation Success</span>
+            <div class="kpi-icon kpi-icon-green" aria-hidden="true">✓</div>
+          </div>
+          <div class="kpi-value">73<sup>%</sup></div>
+          <div class="kpi-footer">
+            <span class="kpi-delta up" aria-label="Up 5.1 percent">▲ 5.1%</span>
+            <span class="kpi-period">rolling avg</span>
+          </div>
+        </article>
+
+        <article class="kpi-card" role="listitem">
+          <div class="kpi-card-top">
+            <span class="kpi-label">Resource Efficiency</span>
+            <div class="kpi-icon kpi-icon-amber" aria-hidden="true">⚡</div>
+          </div>
+          <div class="kpi-value">91<sup>%</sup></div>
+          <div class="kpi-footer">
+            <span class="kpi-delta down" aria-label="Down 1.8 percent">▼ 1.8%</span>
+            <span class="kpi-period">vs prior round</span>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- Charts Row -->
+    <section aria-labelledby="charts-section-label">
+      <div class="section-header" style="margin-bottom: var(--space-5);">
+        <div>
+          <h2 class="section-title" id="charts-section-label">Simulation Trajectories</h2>
+          <p class="section-subtitle">Utility accumulation and strategic positioning over simulation time</p>
+        </div>
+        <a class="section-action" href="#">Full analysis</a>
+      </div>
+
+      <div class="charts-row">
+
+        <!-- Utility Over Time -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Cumulative Utility — Top Agents</div>
+              <div class="card-subtitle">47 rounds · 12 active agents · 6 cohorts</div>
+            </div>
+            <button class="btn btn-ghost" type="button" style="font-size:var(--font-size-xs);">1W 1M 3M All</button>
+          </div>
+          <div class="card-body" style="padding-bottom: var(--space-4);">
+            <div class="chart-wrap">
+              <canvas id="utilityChart" aria-label="Cumulative utility chart"></canvas>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><span class="legend-dot" style="background:#1a3a5c"></span>Agent Alpha</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#2e7d9e"></span>Agent Beta</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#1a7f5a"></span>Agent Gamma</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#b45309"></span>Agent Delta</div>
+          </div>
+        </div>
+
+        <!-- Strategy Distribution -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Strategy Distribution</div>
+              <div class="card-subtitle">Current round · all agents</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="chart-wrap" style="height:200px;">
+              <canvas id="strategyChart" aria-label="Strategy distribution pie chart"></canvas>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-4);">
+              <div class="legend-item"><span class="legend-dot" style="background:#1a3a5c"></span>Cooperative &nbsp;<strong style="margin-left:auto;font-variant-numeric:tabular-nums">42%</strong></div>
+              <div class="legend-item"><span class="legend-dot" style="background:#2e7d9e"></span>Competitive &nbsp;<strong style="margin-left:auto;font-variant-numeric:tabular-nums">31%</strong></div>
+              <div class="legend-item"><span class="legend-dot" style="background:#1a7f5a"></span>Adaptive &nbsp;<strong style="margin-left:auto;font-variant-numeric:tabular-nums">18%</strong></div>
+              <div class="legend-item"><span class="legend-dot" style="background:#b45309"></span>Passive &nbsp;<strong style="margin-left:auto;font-variant-numeric:tabular-nums">9%</strong></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Agent Table -->
+    <section aria-labelledby="agents-section-label">
+      <div class="section-header" style="margin-bottom: var(--space-5);">
+        <div>
+          <h2 class="section-title" id="agents-section-label">Agent Roster</h2>
+          <p class="section-subtitle">Performance snapshot — sorted by utility score</p>
+        </div>
+        <a class="section-action" href="#">Manage agents</a>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Agent</th>
+                <th scope="col">Status</th>
+                <th scope="col">Strategy</th>
+                <th scope="col">Utility Score</th>
+                <th scope="col">Win Rate</th>
+                <th scope="col">Negotiations</th>
+                <th scope="col">Performance</th>
+              </tr>
+            </thead>
+            <tbody id="agentTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Row -->
+    <div class="bottom-row">
+
+      <!-- Event Feed -->
+      <section aria-labelledby="events-section-label">
+        <div class="section-header" style="margin-bottom: var(--space-5);">
+          <div>
+            <h2 class="section-title" id="events-section-label">Event Stream</h2>
+            <p class="section-subtitle">Recent simulation events</p>
+          </div>
+          <a class="section-action" href="#">View log</a>
+        </div>
+        <div class="card">
+          <div class="event-list" id="eventList"></div>
+        </div>
+      </section>
+
+      <!-- Radar Chart -->
+      <section aria-labelledby="radar-section-label">
+        <div class="section-header" style="margin-bottom: var(--space-5);">
+          <div>
+            <h2 class="section-title" id="radar-section-label">Capability Radar</h2>
+            <p class="section-subtitle">Agent Alpha vs. Agent Beta — current round</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-body">
+            <div class="radar-wrap">
+              <canvas id="radarChart" aria-label="Capability radar chart comparing Agent Alpha and Agent Beta"></canvas>
+            </div>
+          </div>
+          <div class="chart-legend" style="justify-content:center;">
+            <div class="legend-item"><span class="legend-dot" style="background:#1a3a5c"></span>Agent Alpha</div>
+            <div class="legend-item"><span class="legend-dot" style="background:#2e7d9e"></span>Agent Beta</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </main><!-- /main -->
+</div><!-- /shell -->
+
+<script>
+/* ─── Shared Chart Defaults ─────────────────────────────────────────────── */
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+Chart.defaults.font.size   = 12;
+Chart.defaults.color       = "#8a96a3";
+
+const CHART_PADDING = { top: 16, right: 16, bottom: 16, left: 8 };
+
+/* ─── Utility Over Time ─────────────────────────────────────────────────── */
+(function buildUtility() {
+  const rounds  = Array.from({ length: 47 }, (_, i) => `R${i + 1}`);
+  const seed    = (base, variance) => rounds.map((_, i) => {
+    base += (Math.random() - 0.44) * variance;
+    return Math.max(0, +base.toFixed(1));
+  });
+  const ctx = document.getElementById("utilityChart").getContext("2d");
+
+  const makeGrad = (ctx, color) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 260);
+    g.addColorStop(0,   color.replace(")", ", .18)").replace("rgb", "rgba"));
+    g.addColorStop(1,   color.replace(")", ", 0)").replace("rgb", "rgba"));
+    return g;
+  };
+
+  new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: rounds,
+      datasets: [
+        {
+          label: "Agent Alpha",
+          data: seed(800, 180),
+          borderColor: "#1a3a5c",
+          backgroundColor: "rgba(26,58,92,.08)",
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          tension: 0.4,
+          fill: true,
+        },
+        {
+          label: "Agent Beta",
+          data: seed(620, 160),
+          borderColor: "#2e7d9e",
+          backgroundColor: "rgba(46,125,158,.06)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          tension: 0.4,
+          fill: true,
+        },
+        {
+          label: "Agent Gamma",
+          data: seed(500, 140),
+          borderColor: "#1a7f5a",
+          backgroundColor: "rgba(26,127,90,.05)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          tension: 0.4,
+          fill: true,
+        },
+        {
+          label: "Agent Delta",
+          data: seed(380, 130),
+          borderColor: "#b45309",
+          backgroundColor: "rgba(180,83,9,.04)",
+          borderWidth: 2,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          tension: 0.4,
+          fill: true,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      layout: { padding: CHART_PADDING },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#fff",
+          titleColor: "#0f1923",
+          bodyColor: "#4a5568",
+          borderColor: "#e3e6ea",
+          borderWidth: 1,
+          padding: 12,
+          boxShadow: "0 4px 12px rgba(0,0,0,.1)",
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()}`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            maxTicksLimit: 10,
+            font: { size: 11 },
+            color: "#8a96a3",
+          },
+          border: { display: false },
+        },
+        y: {
+          grid: { color: "#f0f2f5", lineWidth: 1 },
+          ticks: {
+            font: { size: 11 },
+            color: "#8a96a3",
+            callback: v => v >= 1000 ? `${v / 1000}k` : v,
+          },
+          border: { display: false, dash: [4, 4] },
+        },
+      },
+    },
+  });
+}());
+
+/* ─── Strategy Distribution ─────────────────────────────────────────────── */
+(function buildStrategy() {
+  const ctx = document.getElementById("strategyChart").getContext("2d");
+  new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: ["Cooperative", "Competitive", "Adaptive", "Passive"],
+      datasets: [{
+        data: [42, 31, 18, 9],
+        backgroundColor: ["#1a3a5c", "#2e7d9e", "#1a7f5a", "#b45309"],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "72%",
+      layout: { padding: CHART_PADDING },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#fff",
+          titleColor: "#0f1923",
+          bodyColor: "#4a5568",
+          borderColor: "#e3e6ea",
+          borderWidth: 1,
+          padding: 12,
+        },
+      },
+    },
+  });
+}());
+
+/* ─── Radar Chart ───────────────────────────────────────────────────────── */
+(function buildRadar() {
+  const ctx = document.getElementById("radarChart").getContext("2d");
+  new Chart(ctx, {
+    type: "radar",
+    data: {
+      labels: ["Negotiation", "Resource Mgmt", "Coalition", "Adaptation", "Long-term", "Resilience"],
+      datasets: [
+        {
+          label: "Agent Alpha",
+          data: [88, 74, 91, 65, 82, 79],
+          borderColor: "#1a3a5c",
+          backgroundColor: "rgba(26,58,92,.12)",
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: "#1a3a5c",
+          pointBorderColor: "#fff",
+          pointBorderWidth: 2,
+        },
+        {
+          label: "Agent Beta",
+          data: [72, 88, 68, 83, 70, 90],
+          borderColor: "#2e7d9e",
+          backgroundColor: "rgba(46,125,158,.10)",
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: "#2e7d9e",
+          pointBorderColor: "#fff",
+          pointBorderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: CHART_PADDING },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#fff",
+          titleColor: "#0f1923",
+          bodyColor: "#4a5568",
+          borderColor: "#e3e6ea",
+          borderWidth: 1,
+          padding: 12,
+        },
+      },
+      scales: {
+        r: {
+          min: 0,
+          max: 100,
+          ticks: {
+            stepSize: 25,
+            font: { size: 10 },
+            color: "#8a96a3",
+            backdropColor: "transparent",
+          },
+          grid: { color: "#e3e6ea" },
+          angleLines: { color: "#e3e6ea" },
+          pointLabels: {
+            font: { size: 11, weight: "600" },
+            color: "#4a5568",
+          },
+        },
+      },
+    },
+  });
+}());
+
+/* ─── Agent Table Data ──────────────────────────────────────────────────── */
+(function buildTable() {
+  const agents = [
+    { name: "Agent Alpha",  type: "Optimizer",   color: "#1a3a5c", init: "α", status: "active",  strategy: "Cooperative",  score: 84700, win: 71, negs: 38, perf: 91 },
+    { name: "Agent Beta",   type: "Negotiator",  color: "#2e7d9e", init: "β", status: "active",  strategy: "Adaptive",     score: 72300, win: 64, negs: 55, perf: 84 },
+    { name: "Agent Gamma",  type: "Strategist",  color: "#1a7f5a", init: "γ", status: "active",  strategy: "Cooperative",  score: 65100, win: 68, negs: 31, perf: 78 },
+    { name: "Agent Delta",  type: "Competitor",  color: "#b45309", init: "δ", status: "active",  strategy: "Competitive",  score: 58400, win: 59, negs: 44, perf: 73 },
+    { name: "Agent Epsilon",type: "Analyst",     color: "#6b21a8", init: "ε", status: "waiting", strategy: "Passive",      score: 41200, win: 47, negs: 18, perf: 61 },
+    { name: "Agent Zeta",   type: "Arbitrator",  color: "#0e7490", init: "ζ", status: "active",  strategy: "Adaptive",     score: 39800, win: 53, negs: 29, perf: 67 },
+    { name: "Agent Eta",    type: "Scout",       color: "#7c3aed", init: "η", status: "idle",    strategy: "Competitive",  score: 28600, win: 38, negs: 12, perf: 44 },
+  ];
+
+  const badgeClass = s =>
+    s === "active" ? "badge-active" : s === "waiting" ? "badge-waiting" : "badge-idle";
+
+  const tbody = document.getElementById("agentTableBody");
+  tbody.innerHTML = agents.map(a => `
+    <tr>
+      <td>
+        <div class="agent-name-cell">
+          <div class="agent-avatar" style="background:${a.color}" aria-hidden="true">${a.init}</div>
+          <div>
+            <div class="agent-full-name">${a.name}</div>
+            <div class="agent-type">${a.type}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="badge ${badgeClass(a.status)}">${a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span></td>
+      <td style="color:var(--color-text-secondary);font-size:var(--font-size-sm);">${a.strategy}</td>
+      <td class="td-numeric">${a.score.toLocaleString()}</td>
+      <td class="td-numeric">${a.win}%</td>
+      <td class="td-numeric">${a.negs}</td>
+      <td>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" role="progressbar" aria-valuenow="${a.perf}" aria-valuemin="0" aria-valuemax="100" aria-label="${a.name} performance ${a.perf}%">
+            <div class="progress-bar-fill" style="width:${a.perf}%"></div>
+          </div>
+          <span class="progress-value">${a.perf}%</span>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}());
+
+/* ─── Event Feed Data ───────────────────────────────────────────────────── */
+(function buildEvents() {
+  const events = [
+    { type: "negotiation", title: "Alpha–Beta coalition formed",    desc: "Agents Alpha and Beta signed a 3-round resource-sharing treaty at a 60/40 split.", time: "2 min ago" },
+    { type: "conflict",    title: "Resource conflict — Zone C",      desc: "Delta and Zeta submitted competing claims on sector C-7 energy allocation.", time: "8 min ago" },
+    { type: "milestone",   title: "Round 47 simulation cycle closed", desc: "All 12 agents submitted strategic payloads; global utility up 12.4%.",        time: "15 min ago" },
+    { type: "coalition",   title: "Coalition Sigma dissolved",        desc: "3-agent bloc disbanded after defection by Agent Eta in round 46.",             time: "22 min ago" },
+    { type: "resource",    title: "Resource rebalance triggered",     desc: "System auto-redistributed surplus energy from Zone A to underperforming zones.", time: "31 min ago" },
+    { type: "negotiation", title: "Gamma–Epsilon deal accepted",      desc: "Information-sharing pact accepted with 78% utility gain projected.",           time: "40 min ago" },
+  ];
+
+  const list = document.getElementById("eventList");
+  list.innerHTML = events.map(e => `
+    <div class="event-item" role="article">
+      <div class="event-dot-wrap" aria-hidden="true">
+        <div class="event-dot event-dot-${e.type}"></div>
+        <div class="event-line"></div>
+      </div>
+      <div class="event-content">
+        <div class="event-title">${e.title}</div>
+        <div class="event-desc">${e.desc}</div>
+      </div>
+      <time class="event-time" datetime="">${e.time}</time>
+    </div>
+  `).join("");
+}());
+</script>
+</body>
+</html>
